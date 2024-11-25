@@ -61,9 +61,8 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-     - assets/click2call.js
-     - assets/webphone_api.js
-     - assets/test.js
+     - assets/webphone/webphone_api.js
+     - assets/webphone/js/lib/lib_webphone.js
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
+import 'dart:ffi';
 
 void main() {
   runApp(MaterialApp(home: MyApp()));
@@ -46,19 +47,72 @@ class _MyAppState extends State<MyApp> {
       result = jsResult.stringResult;
     });
   }
-  
+
   void callWebphone() async
   {
-    // String password = r"$eWPQD!Ypy";
-    // String jsCode = await rootBundle.loadString('assets/webphone_api.js');
-    // final x = javascriptRuntime.evaluate(jsCode);
-    final x = await javascriptRuntime.evaluateAsync('ensure();', sourceUrl: 'assets/webphone_api.js');
-    javascriptRuntime.executePendingJob();
-    JsEvalResult asyncResult = await javascriptRuntime.handlePromise(x);
-    print(asyncResult.stringResult);
-    // javascriptRuntime.evaluate("webphone_api.register();");
-    final jsRes = await javascriptRuntime.evaluateAsync("ensure();");
+    String password = r"$eWPQD!Ypy";
+
+    final onLoadedCallbackCode = '''
+    webphone_api.onAppStateChange(function (state){
+        console.log("on onAppStateChange event: "+state);
+    });
+    webphone_api.onLoaded(function() {
+      console.log("Webphone initialized successfully");
+      webphone_api.setparameter('serveraddress', 'sip-bgn-int.ttsl.tel:49868', false);
+      webphone_api.setparameter('username', '0605405970002', false);
+      webphone_api.setparameter('password', '$password', false);
+      webphone_api.setparameter('callto', '6301450563', false);
+      webphone_api.register();
+    });
+    console.log("into callback...........");
+  ''';
+
+    final getRegFailReason = '''
+    console.log("Calling getregfailreason...");
+    webphone_api.getregfailreason(function(state) {
+        console.log("Registration Failure Reason: " + state);
+    }, true);
+    ''';
+
+    final onEvent = '''
+    webphone_api.onEvent(function (type, evt)
+    {
+        console.log(type+evt);
+    });
+    ''';
+
+    final onRegStateChange = '''
+    console.log("Calling onRegStateChange...");
+    webphone_api.onRegStateChange(function(state, reason) {
+        if (state === "registered") {
+            console.log("Webphone is registered.");
+        } else if (state === "unregistered") {
+            console.log("Webphone is unregistered.");
+        } else if (state === "failed") {
+            console.log("Registration failed. Reason: " + reason);
+        } else {
+            console.log("Unknown registration state: " + state);
+        }
+    });
+    ''';
+
+
+    String jsCode = await rootBundle.loadString('assets/webphone/webphone_api.js');
+    final x = await javascriptRuntime.evaluateAsync(jsCode);
+    x.isError ? print("error in loading"):{print("loaded successfully")};
+    String jsCode1 = await rootBundle.loadString('assets/webphone/js/lib/lib_webphone.js');
+    final x1 = await javascriptRuntime.evaluateAsync(jsCode1);
+    x1.isError ? print("error in loading"):{print("loaded successfully")};
+    await javascriptRuntime.evaluateAsync(onLoadedCallbackCode);
+    await javascriptRuntime.evaluateAsync(onEvent);
+    await javascriptRuntime.evaluateAsync("webphone_api.start();");
+    await javascriptRuntime.evaluateAsync("webphone_api.register();");
+    await Future.delayed(Duration(seconds: 3));
+    await javascriptRuntime.evaluateAsync(onRegStateChange);
+    final jsRes = await javascriptRuntime.evaluateAsync("webphone_api.isregistered();");
     print(jsRes.stringResult);
+    await javascriptRuntime.evaluateAsync(getRegFailReason);
+    await javascriptRuntime.evaluateAsync("webphone_api.call('+916301450563');");
   }
   
 
@@ -72,12 +126,13 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Flutter JS Example')),
+      backgroundColor: Colors.black,
+      appBar: AppBar(backgroundColor: Colors.black, title: Text('Flutter JS Example', style: TextStyle(color: Colors.white),)),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(result, style: TextStyle(fontSize: 20)),
+            Text(result, style: TextStyle(fontSize: 20, color: Colors.white)),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: callExternalFunction,
